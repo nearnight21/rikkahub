@@ -72,7 +72,7 @@ jobs:
           }
           JSON
 
-      - name: Generate self-signed release key
+      - name: Generate temporary self-signed release key
         run: |
           keytool -genkeypair \
             -keystore "$GITHUB_WORKSPACE/rikkahub-release.jks" \
@@ -102,12 +102,10 @@ jobs:
           find app/build/outputs/apk/release -name '*.apk' -type f -exec cp {} release-apk/ \;
           ls -lh release-apk
 
-      - name: Upload release APK and signing key
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
           name: rikkahub-self-signed-release
-          path: |
-            release-apk/*.apk
-            rikkahub-release.jks
+          path: release-apk/*.apk
           if-no-files-found: error
           retention-days: 14
