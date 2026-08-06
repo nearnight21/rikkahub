@@ -10,6 +10,7 @@ export interface DisplaySetting {
   showModelName: boolean;
   showTokenUsage: boolean;
   showThinkingContent: boolean;
+  hideReasoningUi?: boolean;
   autoCloseThinking: boolean;
   codeBlockAutoWrap: boolean;
   codeBlockAutoCollapse: boolean;

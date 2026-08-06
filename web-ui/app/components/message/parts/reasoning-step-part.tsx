@@ -98,11 +98,9 @@ export function ReasoningStepPart({ reasoning, collapsedAdaptiveWidth = false, i
 
   const preview = expandState === ReasoningCardState.Preview;
 
-  // Immersive mode: reasoning remains available to the model and message
-  // history, but no reasoning card, title, timer, or content is rendered.
   // Keep this after all hooks so toggling the setting does not violate the
-  // Rules of Hooks.
-  if (displaySetting?.showThinkingContent === false) return null;
+  // Rules of Hooks. Reasoning remains stored and available to the model.
+  if (displaySetting?.hideReasoningUi === true) return null;
 
   return (
     <div data-part="reasoning" data-reasoning-loading={loading || undefined}>
