@@ -589,6 +589,7 @@ data class DisplaySetting(
     val showDateTimeInMessage: Boolean = false,
     val showTokenUsage: Boolean = true,
     val showThinkingContent: Boolean = true,
+    val hideReasoningUi: Boolean = false,
     val autoCloseThinking: Boolean = true,
     val showUpdates: Boolean = true,
     val showMessageJumper: Boolean = true,

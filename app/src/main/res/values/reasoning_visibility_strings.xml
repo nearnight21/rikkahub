@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setting_display_page_hide_reasoning_ui_title">Hide reasoning UI</string>
+    <string name="setting_display_page_hide_reasoning_ui_desc">Hide the thinking card, title, timer, and reasoning text without disabling model reasoning</string>
+</resources>

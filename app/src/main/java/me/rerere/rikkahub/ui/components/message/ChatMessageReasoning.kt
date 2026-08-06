@@ -198,11 +198,8 @@ fun ChainOfThoughtScope.ChatMessageReasoningStep(
     fadeHeight: Float = 64f,
     collapsedAdaptiveWidth: Boolean = false,
 ) {
-    // Immersive mode: keep reasoning in the message model and API history,
-    // but do not render any reasoning card, title, timer, or content.
-    // This changes showThinkingContent from "auto-preview content" to
-    // "show/hide the complete reasoning UI".
-    if (!LocalSettings.current.displaySetting.showThinkingContent) return
+    // Keep reasoning data and model behavior unchanged; only hide its UI.
+    if (LocalSettings.current.displaySetting.hideReasoningUi) return
 
     val (state, loading) = rememberReasoningState(reasoning)
     val thinkingTitle = reasoning.reasoning.extractThinkingTitle()
