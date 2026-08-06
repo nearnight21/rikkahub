@@ -1,0 +1,90 @@
+name: Apply hide reasoning setting
+
+on:
+  push:
+    branches:
+      - agent/add-hide-reasoning-setting
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply independent hide reasoning setting'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/add-hide-reasoning-setting
+          fetch-depth: 0
+
+      - name: Apply source changes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"Expected text not found in {path}: {old[:120]!r}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          # Persisted Android display setting. Default false preserves existing behavior.
+          replace_once(
+              "app/src/main/java/me/rerere/rikkahub/data/datastore/PreferencesStore.kt",
+              "    val showThinkingContent: Boolean = true,\n    val autoCloseThinking: Boolean = true,",
+              "    val showThinkingContent: Boolean = true,\n    val hideReasoningUi: Boolean = false,\n    val autoCloseThinking: Boolean = true,",
+          )
+
+          # Restore the original showThinkingContent semantics and use the new switch.
+          replace_once(
+              "app/src/main/java/me/rerere/rikkahub/ui/components/message/ChatMessageReasoning.kt",
+              "    // Immersive mode: keep reasoning in the message model and API history,\n    // but do not render any reasoning card, title, timer, or content.\n    // This changes showThinkingContent from \"auto-preview content\" to\n    // \"show/hide the complete reasoning UI\".\n    if (!LocalSettings.current.displaySetting.showThinkingContent) return",
+              "    // Keep reasoning data and model behavior unchanged; only hide its UI.\n    if (LocalSettings.current.displaySetting.hideReasoningUi) return",
+          )
+
+          # Add an independent switch to Settings > UI preferences.
+          marker = '''                    item(\n                        headlineContent = { Text(stringResource(R.string.setting_display_page_auto_collapse_thinking_title)) },'''
+          toggle = '''                    item(\n                        headlineContent = { Text(stringResource(R.string.setting_display_page_hide_reasoning_ui_title)) },\n                        supportingContent = { Text(stringResource(R.string.setting_display_page_hide_reasoning_ui_desc)) },\n                        trailingContent = {\n                            Switch(\n                                checked = displaySetting.hideReasoningUi,\n                                onCheckedChange = {\n                                    updateDisplaySetting(displaySetting.copy(hideReasoningUi = it))\n                                }\n                            )\n                        },\n                    )\n'''
+          replace_once(
+              "app/src/main/java/me/rerere/rikkahub/ui/pages/setting/SettingPreferencesUIPage.kt",
+              marker,
+              toggle + marker,
+          )
+
+          # Web UI receives the same setting through the settings payload.
+          replace_once(
+              "web-ui/app/types/settings.ts",
+              "  showThinkingContent: boolean;\n  autoCloseThinking: boolean;",
+              "  showThinkingContent: boolean;\n  hideReasoningUi?: boolean;\n  autoCloseThinking: boolean;",
+          )
+          replace_once(
+              "web-ui/app/components/message/parts/reasoning-step-part.tsx",
+              "  // Immersive mode: reasoning remains available to the model and message\n  // history, but no reasoning card, title, timer, or content is rendered.\n  // Keep this after all hooks so toggling the setting does not violate the\n  // Rules of Hooks.\n  if (displaySetting?.showThinkingContent === false) return null;",
+              "  // Keep this after all hooks so toggling the setting does not violate the\n  // Rules of Hooks. Reasoning remains stored and available to the model.\n  if (displaySetting?.hideReasoningUi === true) return null;",
+          )
+
+          # Add standalone resource files so existing translation files remain untouched.
+          values = Path("app/src/main/res/values/reasoning_visibility_strings.xml")
+          values.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="setting_display_page_hide_reasoning_ui_title">Hide reasoning UI</string>\n    <string name="setting_display_page_hide_reasoning_ui_desc">Hide the thinking card, title, timer, and reasoning text without disabling model reasoning</string>\n</resources>\n''', encoding="utf-8")
+
+          values_zh = Path("app/src/main/res/values-zh/reasoning_visibility_strings.xml")
+          values_zh.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="setting_display_page_hide_reasoning_ui_title">完全隐藏思考过程</string>\n    <string name="setting_display_page_hide_reasoning_ui_desc">隐藏思考卡片、标题、计时和思考文字，但不关闭模型推理</string>\n</resources>\n''', encoding="utf-8")
+
+          # Remove this one-shot workflow from the resulting commit.
+          Path(".github/workflows/apply-hide-reasoning-setting.yml").unlink()
+
+      - name: Verify changes
+        run: |
+          grep -R "hideReasoningUi" -n app/src/main/java web-ui/app
+          test -f app/src/main/res/values/reasoning_visibility_strings.xml
+          test -f app/src/main/res/values-zh/reasoning_visibility_strings.xml
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply independent hide reasoning setting"
+          git push origin HEAD:agent/add-hide-reasoning-setting
